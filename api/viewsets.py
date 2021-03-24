@@ -1,15 +1,38 @@
 from django.contrib.auth.models import User
 from django.db.models import F
+from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+
+from rest_framework_condition import condition
 
 from .models import Document
 from .serializers import DocumentSerializer, UserSerializer
+
+
+def my_etag(request, *args, **kwargs):
+    doc_id = kwargs.get('pk')
+    instance = Document.objects.get(pk=doc_id)
+    return str(instance.version)
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
+
+    @condition(etag_func=my_etag)
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # If the user is not owner and the document is being updated by owner
+        # then the user must not get the document until updated.
+        if request.user != instance.owner and 'If-Match' not in request.headers:
+            return Response('Missing resource version in If-Match',
+                            status=status.HTTP_428_PRECONDITION_REQUIRED)
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_queryset(self):
         # Get all documents owned by user.
@@ -37,7 +60,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save(version=F('version') + 1)
 
+    @condition(etag_func=my_etag)
     def update(self, request, *args, **kwargs):
+        if 'If-Match' not in request.headers:
+            return Response('Missing resource version in If-Match',
+                            status=status.HTTP_428_PRECONDITION_REQUIRED)
+
+        elif not request.headers.get('If-Match').startswith('"'):
+            return Response('If-Match header value should be enclosed in double quotes.',
+                            status=status.HTTP_412_PRECONDITION_FAILED)
+
         data = {key: value for key, value in request.data.items()}
 
         editor = request.data.get('editor')
