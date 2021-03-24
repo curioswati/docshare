@@ -4,24 +4,6 @@ from rest_framework import serializers
 from .models import Document
 
 
-class DocumentSerializer(serializers.ModelSerializer):
-    name = serializers.SerializerMethodField()
-    created_at = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Document
-        fields = ('doc_id', 'doc', 'name', 'editor', 'created_at')
-
-    def get_name(self, obj):
-        file_name = ''
-        if obj.doc and hasattr(obj.doc, 'name'):
-            file_name = obj.doc.name
-        return file_name
-
-    def get_created_at(self, obj):
-        return obj.created_at
-
-
 # Ref: https://nemecek.be/blog/23/how-to-createregister-user-account-with-django-rest-framework-api
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -42,3 +24,24 @@ class UserSerializer(serializers.ModelSerializer):
             password = validated_data.pop('password')
             instance.set_password(password)
         return super(UserSerializer, self).update(instance, validated_data)
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+    editor = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(),
+                                                many=True, required=False)
+
+    class Meta:
+        model = Document
+        fields = ('doc_id', 'doc', 'name', 'editor', 'created_at')
+        extra_kwargs = {'doc': {'required': False}}
+
+    def get_name(self, obj):
+        file_name = ''
+        if obj.doc and hasattr(obj.doc, 'name'):
+            file_name = obj.doc.name
+        return file_name
+
+    def get_created_at(self, obj):
+        return obj.created_at
