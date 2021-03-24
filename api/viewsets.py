@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from rest_framework import viewsets
+from django.db.models import F
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .models import Document
@@ -32,6 +32,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
+        serializer.save(owner=self.request.user, version=1)
+
+    def perform_update(self, serializer):
+        serializer.save(version=F('version') + 1)
 
     def update(self, request, *args, **kwargs):
         data = {key: value for key, value in request.data.items()}
