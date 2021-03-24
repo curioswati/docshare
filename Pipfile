@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 django = "*"
 djangorestframework = "*"
+django-rest-framework-condition = "*"
 
 [requires]
 python_version = "3.6"
