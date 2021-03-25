@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_swagger',
 
     # Project apps
     'api'
@@ -111,6 +112,10 @@ AUTH_PASSWORD_VALIDATORS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
+
+        # Need to allow session authentication for swagger
+        # Ref: https://stackoverflow.com/a/56097414
+        'rest_framework.authentication.SessionAuthentication',
     ],
 }
 
