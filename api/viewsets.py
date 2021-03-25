@@ -1,9 +1,8 @@
 from django.contrib.auth.models import User
 from django.db.models import F
 from rest_framework import status, viewsets
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-
 from rest_framework_condition import condition
 
 from .models import Document
@@ -100,5 +99,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method == 'POST':
             self.permission_classes = (AllowAny,)
+        else:
+            self.permission_classes = (IsAdminUser,)
 
         return super(UserViewSet, self).get_permissions()

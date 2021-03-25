@@ -29,6 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
+
+    # Ref: https://stackoverflow.com/a/51177246
     editor = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(),
                                                 many=True, required=False)
 
