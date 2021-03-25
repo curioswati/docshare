@@ -10,6 +10,15 @@ from .serializers import DocumentSerializer, UserSerializer
 
 
 def my_etag(request, *args, **kwargs):
+    '''
+    Returns the document version to be used in ETag header.
+
+    :params:
+    request(Request): django request passed from the wrapped function.
+
+    :returns:
+    version(str): Document Version.
+    '''
     doc_id = kwargs.get('pk')
     instance = Document.objects.get(pk=doc_id)
     return str(instance.version)
@@ -43,10 +52,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return owned | can_access
 
     def create(self, request, *args, **kwargs):
+
+        # Since we get editors' usernames in the request body and we are storing the pk values in db
+        # we need to convert the usernames to PKs.
         data = {key: value for key, value in request.data.items()}
         data['editor'] = User.objects.filter(
                                              username=request.data.get('editor')
                                              ).values_list('id', flat=True)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -61,14 +74,22 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     @condition(etag_func=my_etag)
     def update(self, request, *args, **kwargs):
+
+        # Have to explicitly check for the presence of header
+        # since django's conditional response will still return the response
+        # whereas we want the request to fail in this case.
         if 'If-Match' not in request.headers:
             return Response('Missing resource version in If-Match',
                             status=status.HTTP_428_PRECONDITION_REQUIRED)
 
+        # the rest_framework_condition can't parse an integer as a header value and sets it empty
+        # which results in the above mentioned situation.
         elif not request.headers.get('If-Match').startswith('"'):
             return Response('If-Match header value should be enclosed in double quotes.',
                             status=status.HTTP_412_PRECONDITION_FAILED)
 
+        # Since we get editors' usernames in the request body and we are storing the pk values in db
+        # we need to convert the usernames to PKs.
         data = {key: value for key, value in request.data.items()}
 
         editor = request.data.get('editor')
